@@ -23,7 +23,7 @@ runPomodoro phase seconds setCount =
         let displayedSetCount = case phase of
               Work -> setCount         -- Work中はそのまま
               Break -> setCount        -- Break中は増えた後（already +1されてる）
-        putStr $ "\r" ++ show phase ++ " " ++ formatTime seconds ++ "  🍅 セット数: " ++ show displayedSetCount
+        putStrLn $ show phase ++ " " ++ formatTime seconds ++ "  🍅 セット数: " ++ show displayedSetCount
         threadDelay 1000000
         runPomodoro phase (seconds - 1) setCount
 

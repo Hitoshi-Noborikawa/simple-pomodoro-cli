@@ -1,0 +1,59 @@
+#+title: Call For Emacs
+#+begin_src ruby
+;; my/pomorodo
+;; process保存用
+(defvar my/pomodoro-process nil)
+;; 1. ポモドーロ用ステータス変数
+(defvar my/pomodoro-status "")
+;; pomodoro CLIを起動
+(defun my/pomodoro-start ()
+  (interactive)
+  (let* ((default-directory "/user-local-path/simple-pomodoro-cli"))
+    (let ((proc (start-process-shell-command "pomodoro-process" nil "stack exec simple-pomodoro-cli")))
+      (setq my/pomodoro-process proc)
+      (set-process-filter proc #'my/pomodoro-filter)
+      (message "🍅 Pomodoro started!"))))
+;; pomodoro CLIをkill
+(defun my/pomodoro-stop ()
+  (interactive)
+  (when (and my/pomodoro-process (process-live-p my/pomodoro-process))
+    (kill-process my/pomodoro-process)
+    (setq my/pomodoro-process nil)
+    (setq my/pomodoro-status "")
+    (force-mode-line-update)
+    (message "🛑 Pomodoro stopped!")))
+;; 3. 出力を受け取ってステータス更新
+(defun my/pomodoro-filter (_ output)
+  (dolist (line (split-string output "\n"))
+    (let ((cleaned (string-trim line)))
+      (when (string-match "\\(Work\\|Break\\) \\([0-9][0-9]:[0-9][0-9]\\)  🍅 セット数: \\([0-9]+\\)" cleaned)
+        (let ((phase (match-string 1 cleaned))
+              (time (match-string 2 cleaned))
+              (set-count (match-string 3 cleaned)))
+          (setq my/pomodoro-status
+                (format "%s %s 🍅%sセット" (if (string= phase "Work") "🍅" "☕️") time set-count))
+          (force-mode-line-update)
+          (when (string= time "00:00")
+            (my/pomodoro-sound)))))))
+;; 通知 Macの効果音のみ
+(defun my/pomodoro-sound ()
+  (start-process-shell-command
+   "pomodoro-sound" nil
+   "afplay /System/Library/Sounds/Ping.aiff"))
+;; 4. modelineに表示するための関数
+(defun my/pomodoro-segment ()
+  (if (string-empty-p my/pomodoro-status)
+      ""
+    (concat " " my/pomodoro-status)))
+;; 5. doom-modelineに差し込む
+(after! doom-modeline
+  (doom-modeline-def-segment my-pomodoro
+    (my/pomodoro-segment))
+  (doom-modeline-def-modeline 'my-simple-modeline
+    '(bar workspace-name window-number modals matches buffer-info remote-host buffer-position word-count parrot selection-info my-pomodoro) ;; ← ここに入れる
+    '(objed-state misc-info battery debug repl lsp minor-modes input-method major-mode process vcs)))
+;; 6. そのmodelineを使う
+(after! doom-modeline
+  (doom-modeline-set-modeline 'my-simple-modeline 'default))
+  #+end_src
+#+end_src
